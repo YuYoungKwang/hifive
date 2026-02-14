@@ -4,9 +4,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.app.dto.CommunityDTO;
 import com.app.dto.RouteDTO;
+import com.app.dto.UserDTO;
+import com.app.service.LoginService;
 import com.app.service.UserService;
 import com.app.service.impl.CommunityService;
 import com.app.service.impl.RouteService;
@@ -33,12 +35,14 @@ public class RouteController {
     private UserService userService;
 
     @Autowired
+    private LoginService loginService;
+
+    @Autowired
     private CommunityService communityService;
 
     @GetMapping
-    public String routesPage(Model model, HttpServletRequest request) {
-        String name = userService.findUserName(1);
-        request.setAttribute("userName", name);
+    public String routesPage(Model model, Authentication authentication) {
+        model.addAttribute("personalUserName", resolveLoggedInUserName(authentication));
 
         model.addAttribute("routes", routeService.getAllRoutes());
         model.addAttribute("categories", routeService.getAllTagCategories());
@@ -78,10 +82,12 @@ public class RouteController {
             @PathVariable Long routeId,
             @RequestParam String reviewContent,
             @RequestParam(required = false, defaultValue = "5") Integer rating,
-            @RequestParam(required = false, defaultValue = "1") Long userNo) {
+            @RequestParam(required = false) Long userNo,
+            Authentication authentication) {
         Map<String, Object> response = new HashMap<>();
         try {
-            CommunityDTO savedReview = communityService.addCommunityReview(routeId, userNo, reviewContent, rating);
+            Long resolvedUserNo = resolveLoggedInUserNo(authentication, userNo);
+            CommunityDTO savedReview = communityService.addCommunityReview(routeId, resolvedUserNo, reviewContent, rating);
             List<CommunityDTO> reviews = communityService.getCommunityReviewsByPlanNo(routeId);
 
             response.put("success", true);
@@ -97,5 +103,44 @@ public class RouteController {
     @GetMapping("/api/user-info")
     public String getUserInfo(@RequestParam int userNo) {
         return userService.findUserName(userNo);
+    }
+
+    private String resolveLoggedInUserName(Authentication authentication) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return "여행자";
+        }
+
+        String authId = authentication.getName();
+        UserDTO loginUser = loginService.findByAuthId(authId);
+        if (loginUser == null) {
+            return authId;
+        }
+
+        if (loginUser.getUserNickName() != null && !loginUser.getUserNickName().trim().isEmpty()) {
+            return loginUser.getUserNickName().trim();
+        }
+        if (loginUser.getUserName() != null && !loginUser.getUserName().trim().isEmpty()) {
+            return loginUser.getUserName().trim();
+        }
+        return authId;
+    }
+
+    private Long resolveLoggedInUserNo(Authentication authentication, Long fallbackUserNo) {
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
+            String authId = authentication.getName();
+            UserDTO loginUser = loginService.findByAuthId(authId);
+            if (loginUser != null && loginUser.getUserNo() != null) {
+                return loginUser.getUserNo();
+            }
+        }
+
+        if (fallbackUserNo != null) {
+            return fallbackUserNo;
+        }
+        throw new IllegalStateException("로그인 사용자 정보를 찾을 수 없습니다.");
     }
 }

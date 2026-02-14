@@ -3,6 +3,16 @@
 
 <mapper namespace="community_mapper">
 
+	<select id="nextCommunityReviewNo" resultType="long">
+		SELECT SEQ_COMMUNITY_REVIEW_NO.NEXTVAL
+		FROM dual
+	</select>
+
+	<select id="nextCommunityReviewNoByTable" resultType="long">
+		SELECT NVL(MAX(review_no), 0) + 1
+		FROM Community
+	</select>
+
 	<select id="getCommunityReviewsByPlanNo" parameterType="long"
 		resultType="com.app.dto.CommunityDTO">
 		SELECT
@@ -22,9 +32,6 @@
 	</select>
 
 	<insert id="insertCommunityReview" parameterType="com.app.dto.CommunityDTO">
-		<selectKey keyProperty="reviewNo" resultType="long" order="BEFORE">
-			SELECT SEQ_COMMUNITY_REVIEW_NO.NEXTVAL FROM dual
-		</selectKey>
 		INSERT INTO Community (
 			review_no, plan_no, user_no, review_content, review_rating
 		) VALUES (

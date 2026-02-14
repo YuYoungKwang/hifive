@@ -9,8 +9,6 @@
     <title>#HiFive — 추천 여행 루트</title>
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700;800&family=Gmarket+Sans:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/routes.css">
-    
-    <%=request.getAttribute("userName") %>
 </head>
 
 <body>
@@ -38,7 +36,8 @@
             <div class="personal-badge">PERSONALIZED RECOMMENDATION</div>
             <div class="personal-row">
                 <div class="personal-title">
-                    <span class="personal-name"><c:out value="${not empty userName ? userName : '여행'}"/></span>님과<br/>
+                    <c:set var="displayPersonalName" value="${not empty personalUserName ? personalUserName : (pageContext.request.userPrincipal != null ? pageContext.request.userPrincipal.name : '여행')}"/>
+                    <span class="personal-name"><c:out value="${displayPersonalName}"/></span><c:if test="${!fn:endsWith(displayPersonalName, '님')}">님</c:if>과<br/>
                     <span class="personal-strong">유사도 <c:out value="${not empty similarityPct ? similarityPct : 98}"/>% 장소들</span>
                 </div>
                 <div class="personal-right">
@@ -141,6 +140,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
+    const csrfToken = '${_csrf.token}';
+    const csrfHeader = '${_csrf.headerName}';
+    const csrfParam = '${_csrf.parameterName}';
     // 카테고리 필터 AJAX
     function filterRoutes(category, btn) {
         document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
@@ -198,8 +200,11 @@
     function saveRoute(routeId, btn) {
         fetch('${pageContext.request.contextPath}/routes/save', {
             method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'routeId=' + routeId
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                [csrfHeader]: csrfToken
+            },
+            body: 'routeId=' + routeId + '&' + encodeURIComponent(csrfParam) + '=' + encodeURIComponent(csrfToken)
         })
         .then(res => res.json())
         .then(data => {

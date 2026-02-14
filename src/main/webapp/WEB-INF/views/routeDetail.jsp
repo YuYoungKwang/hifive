@@ -86,6 +86,9 @@
 
 <script>
     const contextPath = '${pageContext.request.contextPath}';
+    const csrfToken = '${_csrf.token}';
+    const csrfHeader = '${_csrf.headerName}';
+    const csrfParam = '${_csrf.parameterName}';
 
     async function submitReview(event, routeId) {
         event.preventDefault();
@@ -103,15 +106,24 @@
         try {
             const body = 'reviewContent=' + encodeURIComponent(content)
                 + '&rating=' + encodeURIComponent(rating)
-                + '&userNo=1';
+                + '&' + encodeURIComponent(csrfParam) + '=' + encodeURIComponent(csrfToken);
 
             const response = await fetch(contextPath + '/routes/' + routeId + '/reviews', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    [csrfHeader]: csrfToken
+                },
                 body
             });
 
-            const data = await response.json();
+            let data = null;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                showToast('리뷰 저장 실패 (' + response.status + ')');
+                return;
+            }
             if (!response.ok || !data.success) {
                 showToast(data && data.message ? data.message : '리뷰 저장 중 오류가 발생했습니다.');
                 return;
