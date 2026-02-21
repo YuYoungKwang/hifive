@@ -3,96 +3,31 @@
 
 <mapper namespace="plan_detail_mapper">
 
-	<insert id="insertPlanDetail" parameterType="PlanDetailDTO">
-		<selectKey keyProperty="planDetailNo" resultType="long" order="BEFORE">
-			SELECT SEQ_PLAN_DETAIL_NO.NEXTVAL FROM DUAL
-		</selectKey>
-		INSERT INTO PLAN_DETAILS (
-			PLAN_DETAIL_NO, PLAN_NO, PLACE_NO, USER_NO, PLAN_VISIT_ORDER, PLAN_MENO, DETAIL_START_DATE, DETAIL_END_DATE
-		) VALUES (
-			#{planDetailNo}, #{planNo}, #{placeNo}, #{userNo}, #{planVisitOrder}, #{planMeno},
-			#{detailStartDate,jdbcType=TIMESTAMP}, #{detailEndDate,jdbcType=TIMESTAMP}
-		)
-	</insert>
-
-		<select id="getPlanDetailsByPlanNo" parameterType="long"
-			resultType="PlanDetailDTO">
-			SELECT
-				pd.plan_detail_no,
-				pd.plan_no,
-				pd.place_no,
-				pd.user_no,
-				pd.plan_visit_order,
-				pd.plan_meno,
-				pd.detail_start_date,
-				pd.detail_end_date,
-				p.place_address,
-				p.place_latitude,
-				p.place_longitude,
-				CASE
-					WHEN p.place_name IS NOT NULL THEN p.place_name
-					WHEN pd.plan_meno IS NOT NULL AND INSTR(pd.plan_meno, CHR(10)) > 0 THEN SUBSTR(pd.plan_meno, 1, INSTR(pd.plan_meno, CHR(10)) - 1)
-					ELSE pd.plan_meno
-				END AS place_name
+	<select id="getPlanDetailsByPlanNo" parameterType="long"
+		resultType="com.app.dto.PlanDetailDTO">
+		SELECT
+			pd.plan_detail_no,
+			pd.plan_no,
+			pd.place_no,
+			pd.user_no,
+			pd.plan_visit_order,
+			pd.plan_meno,
+			pd.detail_start_date,
+			pd.detail_end_date,
+			p.place_name
 		FROM Plan_Details pd
 		LEFT JOIN Place p
 			ON p.place_no = pd.place_no
-		WHERE pd.plan_no = #{value}
+		WHERE pd.plan_no = #{planNo}
 		ORDER BY NVL(pd.plan_visit_order, 9999), pd.plan_detail_no
 	</select>
 
-		<select id="getPlanDetailByPlanDetailNo" parameterType="long" resultType="PlanDetailDTO">
-			SELECT
-				pd.plan_detail_no,
-				pd.plan_no,
-				pd.place_no,
-				pd.user_no,
-				pd.plan_visit_order,
-				pd.plan_meno,
-				pd.detail_start_date,
-				pd.detail_end_date,
-				p.place_address,
-				p.place_latitude,
-				p.place_longitude,
-				CASE
-					WHEN p.place_name IS NOT NULL THEN p.place_name
-					WHEN pd.plan_meno IS NOT NULL AND INSTR(pd.plan_meno, CHR(10)) > 0 THEN SUBSTR(pd.plan_meno, 1, INSTR(pd.plan_meno, CHR(10)) - 1)
-					ELSE pd.plan_meno
-				END AS place_name
-		FROM Plan_Details pd
-		LEFT JOIN Place p
-			ON p.place_no = pd.place_no
-		WHERE pd.plan_detail_no = #{value}
-	</select>
-
-	<select id="getMaxVisitOrderByPlanNo" parameterType="long" resultType="int">
-		SELECT NVL(MAX(pd.plan_visit_order), 0)
-		FROM Plan_Details pd
-		WHERE pd.plan_no = #{value}
-	</select>
-
-	<delete id="deletePlanDetailsByPlanNo" parameterType="long">
-		DELETE FROM PLAN_DETAILS
-		WHERE PLAN_NO = #{value}
-	</delete>
-
 	<select id="getStepNamesByPlanNo" parameterType="long" resultType="string">
-		SELECT
-			CASE
-				WHEN p.place_name IS NOT NULL THEN p.place_name
-				WHEN pd.plan_meno IS NOT NULL THEN
-					TRIM(
-						CASE
-							WHEN INSTR(pd.plan_meno, CHR(10)) > 0 THEN SUBSTR(pd.plan_meno, 1, INSTR(pd.plan_meno, CHR(10)) - 1)
-							ELSE pd.plan_meno
-						END
-					)
-				ELSE 'Unknown Place'
-			END
+		SELECT NVL(p.place_name, 'Unknown Place')
 		FROM Plan_Details pd
 		LEFT JOIN Place p
 			ON p.place_no = pd.place_no
-		WHERE pd.plan_no = #{value}
+		WHERE pd.plan_no = #{planNo}
 		ORDER BY NVL(pd.plan_visit_order, 9999), pd.plan_detail_no
 	</select>
 
@@ -103,7 +38,7 @@
 			ON ptm.place_no = pd.place_no
 		INNER JOIN Tag_Master tm
 			ON tm.tag_code = ptm.tag_code
-		WHERE pd.plan_no = #{value}
+		WHERE pd.plan_no = #{planNo}
 		ORDER BY tm.tag_name
 	</select>
 
@@ -114,7 +49,7 @@
 			ON ptm.place_no = pd.place_no
 		INNER JOIN Tag_Master tm
 			ON tm.tag_code = ptm.tag_code
-		WHERE pd.plan_no = #{value}
+		WHERE pd.plan_no = #{planNo}
 		ORDER BY tm.tag_category
 	</select>
 
@@ -123,7 +58,7 @@
 			DENSE_RANK FIRST ORDER BY NVL(pd.plan_visit_order, 9999), pd.plan_detail_no
 		)
 		FROM Plan_Details pd
-		WHERE pd.plan_no = #{value}
+		WHERE pd.plan_no = #{planNo}
 		  AND pd.plan_meno IS NOT NULL
 	</select>
 

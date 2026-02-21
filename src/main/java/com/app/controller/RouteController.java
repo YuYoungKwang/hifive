@@ -1,6 +1,5 @@
-package com.app.controller;
+﻿package com.app.controller;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,10 +18,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.app.dto.CommunityDTO;
 import com.app.dto.RouteDTO;
-import com.app.dto.UsersDTO;
-import com.app.service.PlanDetailService;
-import com.app.service.TravelPlanService;
-import com.app.service.UsersService;
+import com.app.dto.UserDTO;
+import com.app.service.LoginService;
+import com.app.service.UserService;
 import com.app.service.impl.CommunityService;
 import com.app.service.impl.RouteService;
 
@@ -34,7 +32,7 @@ public class RouteController {
     private RouteService routeService;
 
     @Autowired
-    private UsersService usersService;
+    private UserService userService;
 
     @Autowired
     private LoginService loginService;
@@ -42,37 +40,27 @@ public class RouteController {
     @Autowired
     private CommunityService communityService;
 
-    @Autowired
-    private TravelPlanService travelPlanService;
-
-    @Autowired
-    private PlanDetailService planDetailService;
-
     @GetMapping
-    public String routesPage(Model model, HttpServletRequest request, Authentication authentication) {
+    public String routesPage(Model model, Authentication authentication) {
+        model.addAttribute("personalUserName", resolveLoggedInUserName(authentication));
 
         model.addAttribute("routes", routeService.getAllRoutes());
         model.addAttribute("categories", routeService.getAllTagCategories());
         model.addAttribute("travelerTypes", routeService.getAllTravelerTypes());
+        return "routeList";
     }
 
     @GetMapping("/{routeId}")
-    public String routeDetail(@PathVariable Long routeId, Model model, Authentication authentication) {
+    public String routeDetail(@PathVariable Long routeId, Model model) {
         RouteDTO route = routeService.getRouteById(routeId);
         if (route == null) {
             return "redirect:/routes";
         }
 
-        UsersDTO currentUser = resolveAuthenticatedUser(authentication);
         model.addAttribute("route", route);
         model.addAttribute("reviews", communityService.getCommunityReviewsByPlanNo(routeId));
-        model.addAttribute("routePlanDetails", planDetailService.findPlanDetails(routeId));
         model.addAttribute("travelerTypes", routeService.getAllTravelerTypes());
         model.addAttribute("categories", routeService.getAllTagCategories());
-        model.addAttribute("currentAuthId", currentUser == null ? null : resolveAuthenticatedAuthId(authentication));
-        model.addAttribute("myPlans", currentUser == null
-                ? Collections.emptyList()
-                : travelPlanService.findUserTravelPlans(currentUser.getUserNo()));
         return "routeDetail";
     }
 
@@ -84,25 +72,8 @@ public class RouteController {
 
     @PostMapping("/save")
     @ResponseBody
-    public Map<String, Object> saveRoute(@RequestParam Long routeId, Authentication authentication) {
-        Map<String, Object> response = new HashMap<>();
-        UsersDTO currentUser = resolveAuthenticatedUser(authentication);
-        if (currentUser == null || currentUser.getUserNo() == null) {
-            return loginRequiredResponse();
-        }
-
-        try {
-            Long copiedPlanNo = travelPlanService.copyTravelPlanWithDetails(routeId, currentUser.getUserNo(), null);
-            response.put("success", true);
-            response.put("message", "내 일정으로 저장했습니다.");
-            response.put("planNo", copiedPlanNo);
-            response.put("redirectUrl", "/plan/" + copiedPlanNo + "/edit");
-            return response;
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return response;
-        }
+    public Map<String, Object> saveRoute(@RequestParam Long routeId) {
+        return Map.of("success", true, "message", "Route saved.");
     }
 
     @PostMapping("/{routeId}/reviews")
@@ -111,15 +82,12 @@ public class RouteController {
             @PathVariable Long routeId,
             @RequestParam String reviewContent,
             @RequestParam(required = false, defaultValue = "5") Integer rating,
+            @RequestParam(required = false) Long userNo,
             Authentication authentication) {
         Map<String, Object> response = new HashMap<>();
-        UsersDTO currentUser = resolveAuthenticatedUser(authentication);
-        if (currentUser == null || currentUser.getUserNo() == null) {
-            return loginRequiredResponse();
-        }
-
         try {
-            CommunityDTO savedReview = communityService.addCommunityReview(routeId, currentUser.getUserNo(), reviewContent, rating);
+            Long resolvedUserNo = resolveLoggedInUserNo(authentication, userNo);
+            CommunityDTO savedReview = communityService.addCommunityReview(routeId, resolvedUserNo, reviewContent, rating);
             List<CommunityDTO> reviews = communityService.getCommunityReviewsByPlanNo(routeId);
 
             response.put("success", true);
@@ -132,144 +100,47 @@ public class RouteController {
         return response;
     }
 
-    @PostMapping("/{routeId}/copy")
-    @ResponseBody
-    public Map<String, Object> copyRouteToNewPlan(
-            @PathVariable Long routeId,
-            @RequestParam(required = false) String planTitle,
-            Authentication authentication) {
-        Map<String, Object> response = new HashMap<>();
-        UsersDTO currentUser = resolveAuthenticatedUser(authentication);
-        if (currentUser == null || currentUser.getUserNo() == null) {
-            return loginRequiredResponse();
-        }
-
-        try {
-            Long copiedPlanNo = travelPlanService.copyTravelPlanWithDetails(routeId, currentUser.getUserNo(), planTitle);
-            response.put("success", true);
-            response.put("message", "새 일정으로 복사했습니다.");
-            response.put("planNo", copiedPlanNo);
-            response.put("redirectUrl", "/plan/" + copiedPlanNo + "/edit");
-            return response;
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return response;
-        }
-    }
-
-    @PostMapping("/{routeId}/append")
-    @ResponseBody
-    public Map<String, Object> appendRouteToExistingPlan(
-            @PathVariable Long routeId,
-            @RequestParam Long targetPlanNo,
-            Authentication authentication) {
-        Map<String, Object> response = new HashMap<>();
-        UsersDTO currentUser = resolveAuthenticatedUser(authentication);
-        if (currentUser == null || currentUser.getUserNo() == null) {
-            return loginRequiredResponse();
-        }
-
-        try {
-            int insertedCount = travelPlanService.appendPlanDetailsToExistingPlan(
-                    routeId, targetPlanNo, currentUser.getUserNo());
-            if (insertedCount <= 0) {
-                response.put("success", false);
-                response.put("message", "추가할 장소 정보가 없습니다.");
-                return response;
-            }
-
-            response.put("success", true);
-            response.put("message", "선택한 일정에 코스 전체를 추가했습니다.");
-            response.put("insertedCount", insertedCount);
-            return response;
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return response;
-        }
-    }
-
-    @PostMapping("/{routeId}/append-place")
-    @ResponseBody
-    public Map<String, Object> appendSinglePlaceToExistingPlan(
-            @PathVariable Long routeId,
-            @RequestParam Long sourcePlanDetailNo,
-            @RequestParam Long targetPlanNo,
-            Authentication authentication) {
-        Map<String, Object> response = new HashMap<>();
-        UsersDTO currentUser = resolveAuthenticatedUser(authentication);
-        if (currentUser == null || currentUser.getUserNo() == null) {
-            return loginRequiredResponse();
-        }
-
-        try {
-            int insertedCount = travelPlanService.appendSinglePlanDetailToExistingPlan(
-                    routeId, sourcePlanDetailNo, targetPlanNo, currentUser.getUserNo());
-            if (insertedCount <= 0) {
-                response.put("success", false);
-                response.put("message", "선택한 장소를 추가하지 못했습니다.");
-                return response;
-            }
-
-            response.put("success", true);
-            response.put("message", "선택한 장소를 기존 일정에 추가했습니다.");
-            response.put("insertedCount", insertedCount);
-            return response;
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return response;
-        }
-    }
-
     @GetMapping("/api/user-info")
-    @ResponseBody
     public String getUserInfo(@RequestParam int userNo) {
-        return usersService.findUserName(userNo);
+        return userService.findUserName(userNo);
     }
 
-    private Map<String, Object> loginRequiredResponse() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", false);
-        response.put("message", "로그인이 필요합니다.");
-        response.put("loginRequired", true);
-        response.put("redirectUrl", "/auth/login");
-        return response;
-    }
-
-    private UsersDTO resolveAuthenticatedUser(Authentication authentication) {
-        String authId = resolveAuthenticatedAuthId(authentication);
-        if (authId == null) {
-            return null;
-        }
-        return usersService.getUserByAuthId(authId);
-    }
-
-    private String resolveAuthenticatedAuthId(Authentication authentication) {
+    private String resolveLoggedInUserName(Authentication authentication) {
         if (authentication == null
                 || !authentication.isAuthenticated()
                 || authentication instanceof AnonymousAuthenticationToken) {
-            return null;
+            return "여행자";
         }
 
         String authId = authentication.getName();
-        if (authId == null || authId.trim().isEmpty()) {
-            return null;
+        UserDTO loginUser = loginService.findByAuthId(authId);
+        if (loginUser == null) {
+            return authId;
         }
-        return authId.trim();
+
+        if (loginUser.getUserNickName() != null && !loginUser.getUserNickName().trim().isEmpty()) {
+            return loginUser.getUserNickName().trim();
+        }
+        if (loginUser.getUserName() != null && !loginUser.getUserName().trim().isEmpty()) {
+            return loginUser.getUserName().trim();
+        }
+        return authId;
     }
 
-    private String resolveDisplayName(UsersDTO usersDTO) {
-        if (usersDTO == null) {
-            return null;
+    private Long resolveLoggedInUserNo(Authentication authentication, Long fallbackUserNo) {
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
+            String authId = authentication.getName();
+            UserDTO loginUser = loginService.findByAuthId(authId);
+            if (loginUser != null && loginUser.getUserNo() != null) {
+                return loginUser.getUserNo();
+            }
         }
-        if (usersDTO.getUserNickName() != null && !usersDTO.getUserNickName().trim().isEmpty()) {
-            return usersDTO.getUserNickName().trim();
+
+        if (fallbackUserNo != null) {
+            return fallbackUserNo;
         }
-        if (usersDTO.getUserName() != null && !usersDTO.getUserName().trim().isEmpty()) {
-            return usersDTO.getUserName().trim();
-        }
-        return null;
+        throw new IllegalStateException("로그인 사용자 정보를 찾을 수 없습니다.");
     }
 }

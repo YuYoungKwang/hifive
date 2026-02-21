@@ -1,6 +1,6 @@
 package com.app.dto;
 
-import java.sql.Timestamp;
+import java.sql.Date;
 
 import lombok.Data;
 
@@ -13,12 +13,9 @@ public class PlanDetailDTO {
     private Long userNo;
     private Integer planVisitOrder;
     private String planMeno;
-    private Timestamp detailStartDate;
-    private Timestamp detailEndDate;
+    private Date detailStartDate;
+    private Date detailEndDate;
 
     // Joined fields
     private String placeName;
-    private String placeAddress;
-    private Double placeLatitude;
-    private Double placeLongitude;
 }

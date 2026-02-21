@@ -5,7 +5,6 @@ import lombok.Data;
 @Data
 public class PlaceDTO {
 	private Long placeNo;
-	private String placeContentId;
 	private String placeName;
 	private String placeCategory;
 	private String placeAddress;

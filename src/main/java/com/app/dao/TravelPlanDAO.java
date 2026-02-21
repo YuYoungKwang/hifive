@@ -10,11 +10,5 @@ public interface TravelPlanDAO {
 
     TravelPlanDTO getTravelPlanById(Long planNo);
 
-	List<TravelPlanDTO> getTravelPlansByUserNo(Long userNo);
-
-	int insertTravelPlan(TravelPlanDTO travelPlan);
-
-	int updateTravelPlan(TravelPlanDTO travelPlan);
-
-    int deleteTravelPlanByOwner(Long planNo, Long userNo);
+    List<TravelPlanDTO> getTravelPlansByUserNo(Long userNo);
 }
