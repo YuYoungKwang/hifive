@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.app.dao.CommunityDAO;
 import com.app.dto.CommunityDTO;
@@ -20,7 +21,7 @@ public class CommunityService {
 
     public CommunityDTO addCommunityReview(Long planNo, Long userNo, String reviewContent, Integer rating) {
         if (reviewContent == null || reviewContent.trim().isEmpty()) {
-            throw new IllegalArgumentException("Review content is required.");
+            throw new IllegalArgumentException("리뷰 내용을 입력해 주세요.");
         }
 
         CommunityDTO dto = new CommunityDTO();
@@ -38,6 +39,21 @@ public class CommunityService {
         return dto;
     }
 
+    public int getMyCommunityReviewCount(String authId) {
+        String safeAuthId = normalizeAuthId(authId);
+        return communityDAO.countCommunityReviewsByAuthId(safeAuthId);
+    }
+
+    public List<CommunityDTO> getMyCommunityReviews(String authId, int page, int pageSize, String sortType) {
+        String safeAuthId = normalizeAuthId(authId);
+        int safePage = Math.max(1, page);
+        int safePageSize = Math.max(1, pageSize);
+        int startRow = ((safePage - 1) * safePageSize) + 1;
+        int endRow = safePage * safePageSize;
+        String safeSortType = normalizeSortType(sortType);
+        return communityDAO.getCommunityReviewsByAuthIdPaged(safeAuthId, startRow, endRow, safeSortType);
+    }
+
     private int normalizeRating(Integer rating) {
         if (rating == null) {
             return 5;
@@ -49,5 +65,24 @@ public class CommunityService {
             return 5;
         }
         return rating;
+    }
+
+    private String normalizeAuthId(String authId) {
+        if (!StringUtils.hasText(authId)) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+        String trimmed = authId.trim();
+        return trimmed.length() <= 100 ? trimmed : trimmed.substring(0, 100);
+    }
+
+    private String normalizeSortType(String sortType) {
+        if (!StringUtils.hasText(sortType)) {
+            return "latest";
+        }
+        String normalized = sortType.trim().toLowerCase();
+        if ("oldest".equals(normalized) || "rating".equals(normalized)) {
+            return normalized;
+        }
+        return "latest";
     }
 }

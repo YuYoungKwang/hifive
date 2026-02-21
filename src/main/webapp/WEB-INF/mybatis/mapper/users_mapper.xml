@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper PUBLIC
+		   "-//mybatis.org//DTD Mapper 3.0//EN" 
+		   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="users_mapper">
+	<select id="getUserByAuthId" resultType="UsersDTO" parameterType="string">
+		SELECT
+			u.USER_NO AS userNo,
+			u.USER_TYPE AS userType,
+			u.USER_CREATED_AT AS userCreatedAt,
+			u.USER_UPDATED_AT AS userUpdatedAt,
+			u.USER_STATUS AS userStatus,
+			u.USER_NAME AS userName,
+			u.USER_GENDER AS userGender,
+			u.USER_PHONENUMBER AS userPhoneNumber,
+			u.USER_REGISTRATION_NO AS userRegistrationNo,
+			u.USER_NICKNAME AS userNickName,
+			u.USER_PROFILE_IMG AS userProfileImg,
+			ua2.USER_ADDRESS_NO AS userAddressNo,
+			ua2.USER_ZIP_CODE AS userZipCode,
+			ua2.USER_BASE_ADDRESS AS userBaseAddress,
+			ua2.USER_DETAIL_ADDRESS AS userDetailAddress
+		FROM USERS u
+		JOIN USER_AUTHENTICATION ua
+			ON ua.USER_NO = u.USER_NO
+		LEFT JOIN USER_ADDRESS ua2
+			ON ua2.USER_NO = u.USER_NO
+		WHERE ua.USER_AUTH_ID = #{value}
+	</select>
+
+	<select id="getUserTagsByAuthId" resultType="UserTagMapDTO" parameterType="string">
+		SELECT
+			utm.MAPPING_NO,
+			utm.USER_NO,
+			utm.QUESTION_ID,
+			utm.TAG_CODE,
+			tm.TAG_NAME,
+			tm.TAG_CATEGORY
+		FROM USER_TAG_MAP utm
+		JOIN USER_AUTHENTICATION ua
+			ON ua.USER_NO = utm.USER_NO
+		LEFT JOIN TAG_MASTER tm
+			ON tm.TAG_CODE = utm.TAG_CODE
+		WHERE ua.USER_AUTH_ID = #{value}
+		ORDER BY tm.TAG_CATEGORY ASC, tm.TAG_NAME ASC, utm.MAPPING_NO ASC
+	</select>
+
+	<select id="getTagMasterList" resultType="TagMasterDTO">
+		SELECT
+			TAG_CODE,
+			TAG_NAME,
+			TAG_CATEGORY
+		FROM TAG_MASTER
+		ORDER BY TAG_CATEGORY ASC, TAG_NAME ASC
+	</select>
+
+	<select id="countTagMasterByTagCode" resultType="int" parameterType="string">
+		SELECT COUNT(1)
+		FROM TAG_MASTER
+		WHERE TAG_CODE = #{value}
+	</select>
+
+	<insert id="insertUserTagByAuthId" parameterType="map">
+		INSERT INTO USER_TAG_MAP (
+			MAPPING_NO, USER_NO, QUESTION_ID, TAG_CODE
+		)
+		SELECT
+			SEQ_USER_TAG_MAP_NO.NEXTVAL,
+			ua.USER_NO,
+			#{questionId},
+			#{tagCode}
+		FROM USER_AUTHENTICATION ua
+		WHERE ua.USER_AUTH_ID = #{authId}
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM USER_TAG_MAP utm
+			WHERE utm.USER_NO = ua.USER_NO
+			  AND utm.TAG_CODE = #{tagCode}
+		)
+	</insert>
+
+	<delete id="deleteUserTagByAuthId" parameterType="map">
+		DELETE FROM USER_TAG_MAP
+		WHERE USER_NO = (
+			SELECT ua.USER_NO
+			FROM USER_AUTHENTICATION ua
+			WHERE ua.USER_AUTH_ID = #{authId}
+		)
+		  AND TAG_CODE = #{tagCode}
+	</delete>
+
+	<update id="updateUserProfileByAuthId" parameterType="map">
+		UPDATE USERS u
+		SET
+			u.USER_NAME = #{userName},
+			u.USER_NICKNAME = #{userNickName},
+			u.USER_GENDER = #{userGender},
+			u.USER_PHONENUMBER = #{userPhoneNumber},
+			u.USER_REGISTRATION_NO = #{userRegistrationNo},
+			u.USER_UPDATED_AT = SYSTIMESTAMP
+		WHERE EXISTS (
+			SELECT 1
+			FROM USER_AUTHENTICATION ua
+			WHERE ua.USER_NO = u.USER_NO
+			  AND ua.USER_AUTH_ID = #{authId}
+		)
+	</update>
+
+	<update id="upsertUserAddressByAuthId" parameterType="map">
+		MERGE INTO USER_ADDRESS ua
+		USING (
+			SELECT ua2.USER_NO AS userNo
+			FROM USER_AUTHENTICATION ua2
+			WHERE ua2.USER_AUTH_ID = #{authId}
+		) src
+		ON (ua.USER_NO = src.userNo)
+		WHEN MATCHED THEN
+			UPDATE SET
+				ua.USER_ZIP_CODE = #{userZipCode},
+				ua.USER_BASE_ADDRESS = #{userBaseAddress},
+				ua.USER_DETAIL_ADDRESS = #{userDetailAddress}
+		WHEN NOT MATCHED THEN
+			INSERT (
+				USER_ADDRESS_NO,
+				USER_NO,
+				USER_ZIP_CODE,
+				USER_BASE_ADDRESS,
+				USER_DETAIL_ADDRESS
+			)
+			VALUES (
+				SEQ_USER_ADDRESS_NO.NEXTVAL,
+				src.userNo,
+				#{userZipCode},
+				#{userBaseAddress},
+				#{userDetailAddress}
+			)
+	</update>
+
+	<select id="findAuthPasswordByAuthId" parameterType="string" resultType="string">
+		SELECT ua.USER_AUTH_PW
+		FROM USER_AUTHENTICATION ua
+		WHERE ua.USER_AUTH_ID = #{value}
+	</select>
+
+	<update id="updateAuthPasswordByAuthId" parameterType="map">
+		UPDATE USER_AUTHENTICATION
+		SET USER_AUTH_PW = #{encodedPassword}
+		WHERE USER_AUTH_ID = #{authId}
+	</update>
+
+	<delete id="deleteUserTagsByUserNo" parameterType="long">
+		DELETE FROM USER_TAG_MAP
+		WHERE USER_NO = #{value}
+	</delete>
+
+	<insert id="insertUserTagByUserNo" parameterType="UserTagMapDTO">
+		INSERT INTO USER_TAG_MAP (
+			MAPPING_NO, USER_NO, QUESTION_ID, TAG_CODE
+		)
+		SELECT
+			SEQ_USER_TAG_MAP_NO.NEXTVAL,
+			#{userNo},
+			#{questionId},
+			#{tagCode}
+		FROM DUAL
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM USER_TAG_MAP utm
+			WHERE utm.USER_NO = #{userNo}
+			  AND utm.TAG_CODE = #{tagCode}
+		)
+	</insert>
+
+	<select id="findUserTagsByUserNo" resultType="UserTagMapDTO" parameterType="long">
+		SELECT
+			utm.MAPPING_NO,
+			utm.USER_NO,
+			utm.QUESTION_ID,
+			utm.TAG_CODE,
+			tm.TAG_NAME,
+			tm.TAG_CATEGORY
+		FROM USER_TAG_MAP utm
+		LEFT JOIN TAG_MASTER tm
+			ON tm.TAG_CODE = utm.TAG_CODE
+		WHERE utm.USER_NO = #{value}
+		ORDER BY tm.TAG_CATEGORY ASC, tm.TAG_NAME ASC, utm.MAPPING_NO ASC
+	</select>
+
+	<select id="getUserNickname" parameterType="int" resultType="string">
+		SELECT USER_NICKNAME
+		FROM USERS
+		WHERE USER_NO = #{value}
+	</select>
+</mapper>

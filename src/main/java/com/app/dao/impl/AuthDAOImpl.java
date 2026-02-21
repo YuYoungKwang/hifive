@@ -1,4 +1,4 @@
-package com.app.dao.auth.impl;
+package com.app.dao.impl;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -7,8 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Repository;
 
-import com.app.dao.auth.AuthDAO;
-import com.app.dto.UserDTO;
+import com.app.dao.AuthDAO;
+import com.app.dto.UsersDTO;
 
 @Repository
 public class AuthDAOImpl implements AuthDAO {
@@ -73,12 +73,12 @@ public class AuthDAOImpl implements AuthDAO {
     }
 
     @Override
-    public int insertUser(UserDTO user) {
+    public int insertUser(UsersDTO user) {
         return sqlSessionTemplate.insert(NAMESPACE + "insertUser", user);
     }
 
     @Override
-    public int insertUserAuthentication(UserDTO user, Long userAuthNo, String encodedPassword) {
+    public int insertUserAuthentication(UsersDTO user, Long userAuthNo, String encodedPassword) {
         if (user.getAuthSnsType() == null) {
             user.setAuthSnsType(DEFAULT_SNS_TYPE);
         }
@@ -91,12 +91,12 @@ public class AuthDAOImpl implements AuthDAO {
     }
 
     @Override
-    public int insertUserAddress(UserDTO user) {
+    public int insertUserAddress(UsersDTO user) {
         return sqlSessionTemplate.insert(NAMESPACE + "insertUserAddress", user);
     }
 
     @Override
-    public UserDTO findByAuthId(String userId) {
+    public UsersDTO findByAuthId(String userId) {
         return sqlSessionTemplate.selectOne(NAMESPACE + "findByAuthId", userId);
     }
 
@@ -118,6 +118,17 @@ public class AuthDAOImpl implements AuthDAO {
         return sqlSessionTemplate.update(NAMESPACE + "updatePasswordByAuthIdAndEmail", params);
     }
 
+    @Override
+    public int updateSocialAdditionalInfoByAuthId(String userId, String userPhoneNumber, String userRegistrationNo) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("userId", userId);
+        params.put("userPhoneNumber", userPhoneNumber);
+        params.put("userRegistrationNo", userRegistrationNo);
+        params.put("defaultSnsType", DEFAULT_SNS_TYPE);
+        params.put("activeStatus", ACTIVE_STATUS);
+        return sqlSessionTemplate.update(NAMESPACE + "updateSocialAdditionalInfoByAuthId", params);
+    }
+
     private Long selectNextSequenceOrNull(String... statementIds) {
         DataAccessException last = null;
         for (String statementId : statementIds) {
@@ -135,6 +146,6 @@ public class AuthDAOImpl implements AuthDAO {
         if (last != null) {
             return null;
         }
-        throw new IllegalStateException("사용 가능한 시퀀스를 찾지 못했습니다.");
+        throw new IllegalStateException("No available sequence statement.");
     }
 }

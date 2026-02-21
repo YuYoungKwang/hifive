@@ -5,7 +5,7 @@
 
 <mapper namespace="auth">
 
-    <resultMap id="userResultMap" type="com.app.dto.UserDTO">
+    <resultMap id="userResultMap" type="UsersDTO">
         <id property="userNo" column="USER_NO" />
         <result property="userType" column="USER_TYPE" />
         <result property="userStatus" column="USER_STATUS" />
@@ -78,7 +78,7 @@
         FROM USER_ADDRESS
     </select>
 
-    <insert id="insertUser" parameterType="com.app.dto.UserDTO">
+    <insert id="insertUser" parameterType="UsersDTO">
         INSERT INTO USERS
         (
             USER_NO,
@@ -130,7 +130,7 @@
         )
     </insert>
 
-    <insert id="insertUserAddress" parameterType="com.app.dto.UserDTO">
+    <insert id="insertUserAddress" parameterType="UsersDTO">
         INSERT INTO USER_ADDRESS
         (
             USER_ADDRESS_NO,
@@ -189,6 +189,21 @@
                 FROM USERS u
                 WHERE u.USER_NO = ua.USER_NO
                   AND u.USER_STATUS = #{activeStatus}
+          )
+    </update>
+
+    <update id="updateSocialAdditionalInfoByAuthId" parameterType="map">
+        UPDATE USERS u
+        SET u.USER_PHONENUMBER = #{userPhoneNumber},
+            u.USER_REGISTRATION_NO = #{userRegistrationNo},
+            u.USER_UPDATED_AT = SYSTIMESTAMP
+        WHERE u.USER_STATUS = #{activeStatus}
+          AND EXISTS (
+                SELECT 1
+                FROM USER_AUTHENTICATION ua
+                WHERE ua.USER_NO = u.USER_NO
+                  AND ua.USER_AUTH_ID = #{userId}
+                  AND NVL(ua.USER_AUTH_SNS_TYPE, #{defaultSnsType}) != #{defaultSnsType}
           )
     </update>
 

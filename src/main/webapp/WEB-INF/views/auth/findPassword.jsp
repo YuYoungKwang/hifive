@@ -5,9 +5,11 @@
 <meta charset="UTF-8">
 <title>비밀번호 찾기</title>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/auth.css">
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/fragments/main-layout.css">
 </head>
 <body>
-
+    <jsp:include page="/WEB-INF/views/fragments/mainPage-Header.jsp" />
+    <main class="auth-page">
     <div class="auth-container">
         <div class="auth-logo">
             <h1>비밀번호 찾기</h1>
@@ -34,6 +36,7 @@
             <a href="${pageContext.request.contextPath}/auth/login">로그인으로 돌아가기</a>
         </div>
     </div>
-
+    </main>
+    <jsp:include page="/WEB-INF/views/fragments/mainPage-Footer.jsp" />
 </body>
 </html>

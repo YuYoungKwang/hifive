@@ -3,7 +3,7 @@
 
 <mapper namespace="travel_plan_mapper">
 
-	<select id="getPublicTravelPlans" resultType="com.app.dto.TravelPlanDTO">
+	<select id="getPublicTravelPlans" resultType="TravelPlanDTO">
 		SELECT
 			tp.plan_no,
 			tp.user_no,
@@ -58,7 +58,7 @@
 	</select>
 
 	<select id="getTravelPlanById" parameterType="long"
-		resultType="com.app.dto.TravelPlanDTO">
+		resultType="TravelPlanDTO">
 		SELECT
 			tp.plan_no,
 			tp.user_no,
@@ -108,11 +108,11 @@
 			GROUP BY user_no
 		) ts
 			ON ts.user_no = tp.user_no
-		WHERE tp.plan_no = #{planNo}
+		WHERE tp.plan_no = #{value}
 	</select>
 
 	<select id="getTravelPlansByUserNo" parameterType="long"
-		resultType="com.app.dto.TravelPlanDTO">
+		resultType="TravelPlanDTO">
 		SELECT
 			tp.plan_no,
 			tp.user_no,
@@ -162,8 +162,38 @@
 			GROUP BY user_no
 		) ts
 			ON ts.user_no = tp.user_no
-		WHERE tp.user_no = #{userNo}
+		WHERE tp.user_no = #{value}
 		ORDER BY tp.plan_no DESC
 	</select>
+	
+	<insert id="insertTravelPlan" parameterType="TravelPlanDTO">
+		<selectKey keyProperty="planNo" resultType="long" order="BEFORE">
+			SELECT SEQ_PLAN_NO.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO TRAVEL_PLANS (
+			PLAN_NO, USER_NO, PLAN_TITLE, PLAN_IS_PUBLIC, PLAN_STATUS, PLAN_START_DATE, PLAN_END_DATE
+		) VALUES (
+			#{planNo}, #{userNo}, #{planTitle}, #{planIsPublic}, #{planStatus},
+        #{planStartDate}, #{planEndDate}
+		)
+	</insert>
+
+	<update id="updateTravelPlan" parameterType="TravelPlanDTO">
+		UPDATE TRAVEL_PLANS
+		SET
+			PLAN_TITLE = #{planTitle},
+			PLAN_IS_PUBLIC = #{planIsPublic},
+			PLAN_STATUS = #{planStatus},
+			PLAN_START_DATE = #{planStartDate},
+			PLAN_END_DATE = #{planEndDate}
+		WHERE PLAN_NO = #{planNo}
+		  AND USER_NO = #{userNo}
+	</update>
+
+	<delete id="deleteTravelPlanByOwner" parameterType="map">
+		DELETE FROM TRAVEL_PLANS
+		WHERE PLAN_NO = #{planNo}
+		  AND USER_NO = #{userNo}
+	</delete>
 
 </mapper>

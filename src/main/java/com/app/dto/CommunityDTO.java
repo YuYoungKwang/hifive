@@ -9,6 +9,7 @@ public class CommunityDTO {
 
     private Long reviewNo;
     private Long planNo;
+    private String planTitle;
     private Long userNo;
     private String reviewContent;
     private Integer rating;

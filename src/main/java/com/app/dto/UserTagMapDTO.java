@@ -1,0 +1,13 @@
+package com.app.dto;
+
+import lombok.Data;
+
+@Data
+public class UserTagMapDTO { // 사용자 성향분석 시, 태그 저장
+    private long mappingNo;      // PK
+    private long userNo;        // 회원 번호 (비회원은 null 가능)
+    private String questionId;  // Q1, Q2...
+    private String tagCode;     // NATURE, SEA...
+    private String tagName;     // NATURE, SEA...
+    private String tagCategory;     // NATURE, SEA...
+}

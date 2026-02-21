@@ -1,0 +1,216 @@
+@charset "UTF-8";
+
+.main-header {
+	background-color: #ffffff;
+	border-bottom: 1px solid #eee;
+	padding: 10px 0;
+	position: sticky;
+	top: 0;
+	z-index: 1000;
+}
+
+.header-container {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 20px;
+}
+
+.header-logo {
+	font-size: 24px;
+	text-decoration: none;
+	flex: 1;
+}
+
+.header-menu-wrapper {
+	flex: 2;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 16px;
+}
+
+.nav-menu {
+	display: flex;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	gap: 30px;
+}
+
+.nav-menu li a {
+	text-decoration: none;
+	color: #333;
+	font-weight: 500;
+}
+
+.nav-menu li a:hover {
+	color: #007bff;
+}
+
+.user-auth {
+	flex: 1;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 15px;
+}
+
+.logout-form {
+	margin: 0;
+	display: inline-flex;
+	align-items: center;
+}
+
+.btn-login,
+.btn-signup,
+.btn-logout {
+	text-decoration: none;
+	font-size: 14px;
+	padding: 6px 12px;
+	border-radius: 4px;
+	border: none;
+	background: transparent;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.btn-login {
+	color: #555;
+}
+
+.btn-signup {
+	background-color: #007bff;
+	color: #fff;
+}
+
+.btn-logout {
+	color: #555;
+}
+
+.user-info {
+	font-size: 14px;
+	color: #666;
+}
+
+.main-footer {
+	background-color: #ffffff;
+	color: #333;
+	border-top: 1px solid #eee;
+	padding: 25px 0 15px;
+}
+
+.footer-container {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 20px;
+}
+
+.footer-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	margin-bottom: 15px;
+	gap: 20px;
+}
+
+.footer-brand {
+	flex: 1.5;
+	min-width: 200px;
+}
+
+.footer-logo {
+	font-size: 20px;
+	font-weight: 800;
+	color: #007bff;
+	margin: 0 0 5px;
+}
+
+.brand-desc {
+	font-size: 13px;
+	font-weight: 600;
+	margin: 0;
+	color: #444;
+}
+
+.brand-sub {
+	font-size: 12px;
+	color: #888;
+	margin: 2px 0 0;
+}
+
+.footer-links h3 {
+	font-size: 13px;
+	font-weight: 700;
+	margin: 0 0 8px;
+	color: #222;
+}
+
+.footer-links ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.footer-links ul li {
+	margin-bottom: 4px;
+}
+
+.footer-links ul li a {
+	color: #666;
+	font-size: 12px;
+	text-decoration: none;
+}
+
+.footer-links ul li a:hover {
+	text-decoration: underline;
+}
+
+.footer-bottom {
+	border-top: 1px solid #f4f4f4;
+	padding-top: 10px;
+	text-align: center;
+}
+
+.footer-bottom p {
+	font-size: 11px;
+	color: #aaa;
+	margin: 0;
+}
+
+@media (max-width: 640px) {
+	.header-container {
+		padding: 0 12px;
+	}
+
+	.header-logo {
+		font-size: 20px;
+	}
+
+	.header-menu-wrapper {
+		flex: unset;
+	}
+
+	.nav-menu {
+		display: none;
+	}
+
+	.user-auth {
+		gap: 8px;
+	}
+
+	.btn-login,
+	.btn-signup,
+	.btn-logout {
+		font-size: 12px;
+		padding: 5px 8px;
+	}
+
+	.footer-top {
+		flex-direction: column;
+		gap: 16px;
+	}
+}
