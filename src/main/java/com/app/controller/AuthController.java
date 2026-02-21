@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,8 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +30,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.app.dto.UsersDTO;
 import com.app.service.LoginService;
+import com.app.service.impl.SocialUserProvisionService;
 
 @Controller
 @RequestMapping("/auth")
@@ -32,18 +41,22 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final LoginService loginService;
+    private final SocialUserProvisionService socialUserProvisionService;
     private final ServletContext servletContext;
 
     @Autowired
-    public AuthController(LoginService loginService, ServletContext servletContext) {
+    public AuthController(LoginService loginService,
+                          SocialUserProvisionService socialUserProvisionService,
+                          ServletContext servletContext) {
         this.loginService = loginService;
+        this.socialUserProvisionService = socialUserProvisionService;
         this.servletContext = servletContext;
     }
 
     @GetMapping("/login")
     public String loginPage(Authentication authentication) {
         if (isAuthenticated(authentication)) {
-            return "redirect:/main";
+            return "redirect:/hashTrip";
         }
         return "auth/login";
     }
@@ -51,6 +64,14 @@ public class AuthController {
     @GetMapping("/signup")
     public String signupPage() {
         return "auth/signup";
+    }
+
+    @GetMapping("/logout")
+    public String logoutViaGet(HttpServletRequest request,
+                               HttpServletResponse response,
+                               Authentication authentication) {
+        new SecurityContextLogoutHandler().logout(request, response, authentication);
+        return "redirect:/auth/login?logout=true";
     }
 
     @PostMapping("/signup")
@@ -119,10 +140,101 @@ public class AuthController {
         return "auth/findPasswordResult";
     }
 
+    @GetMapping("/social/additional-info")
+    public String socialAdditionalInfoPage(Authentication authentication, Model model) {
+        if (!isAuthenticated(authentication)) {
+            return "redirect:/auth/login";
+        }
+
+        String authId = resolveCurrentAuthId(authentication);
+        if (!StringUtils.hasText(authId) || !loginService.isSocialUserMissingAdditionalInfo(authId)) {
+            return "redirect:/main";
+        }
+
+        UsersDTO user = loginService.findByAuthId(authId);
+        if (user != null) {
+            model.addAttribute("userPhoneNumber", user.getUserPhoneNumber());
+            model.addAttribute("birthDate", formatBirthDateForInput(user.getUserRegistrationNo()));
+        }
+        return "auth/socialAdditionalInfo";
+    }
+
+    @PostMapping("/social/additional-info")
+    public String socialAdditionalInfoProcess(Authentication authentication,
+                                              @RequestParam("userPhoneNumber") String userPhoneNumber,
+                                              @RequestParam("birthDate") String birthDate,
+                                              RedirectAttributes redirectAttributes) {
+        if (!isAuthenticated(authentication)) {
+            return "redirect:/auth/login";
+        }
+
+        String authId = resolveCurrentAuthId(authentication);
+        if (!StringUtils.hasText(authId)) {
+            return "redirect:/main";
+        }
+
+        try {
+            String normalizedBirthDate = normalizeBirthDate(birthDate);
+            loginService.updateSocialAdditionalInfo(authId, userPhoneNumber, normalizedBirthDate);
+            redirectAttributes.addFlashAttribute("message", "추가 정보가 저장되었습니다.");
+            return "redirect:/main";
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            redirectAttributes.addFlashAttribute("userPhoneNumber", userPhoneNumber);
+            redirectAttributes.addFlashAttribute("birthDate", birthDate);
+            return "redirect:/auth/social/additional-info";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "추가 정보 저장 중 오류가 발생했습니다.");
+            redirectAttributes.addFlashAttribute("userPhoneNumber", userPhoneNumber);
+            redirectAttributes.addFlashAttribute("birthDate", birthDate);
+            return "redirect:/auth/social/additional-info";
+        }
+    }
+
     private boolean isAuthenticated(Authentication authentication) {
         return authentication != null
                 && authentication.isAuthenticated()
                 && !(authentication instanceof AnonymousAuthenticationToken);
+    }
+
+    private String resolveCurrentAuthId(Authentication authentication) {
+        if (authentication instanceof OAuth2AuthenticationToken) {
+            OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
+            Object principal = token.getPrincipal();
+            if (principal instanceof OAuth2User) {
+                OAuth2User oAuth2User = (OAuth2User) principal;
+                Map<String, Object> attributes = oAuth2User.getAttributes();
+                socialUserProvisionService.provisionIfMissing(token.getAuthorizedClientRegistrationId(), attributes);
+                return socialUserProvisionService.resolveSocialAuthId(
+                        token.getAuthorizedClientRegistrationId(),
+                        attributes);
+            }
+        }
+        return authentication != null ? authentication.getName() : null;
+    }
+
+    private String normalizeBirthDate(String birthDate) {
+        if (!StringUtils.hasText(birthDate)) {
+            throw new IllegalArgumentException("생년월일은 필수 입력입니다.");
+        }
+        String digitsOnly = birthDate.replaceAll("[^0-9]", "");
+        if (digitsOnly.length() != 8) {
+            throw new IllegalArgumentException("생년월일 형식이 올바르지 않습니다.");
+        }
+        return digitsOnly;
+    }
+
+    private String formatBirthDateForInput(String registrationNo) {
+        if (!StringUtils.hasText(registrationNo)) {
+            return null;
+        }
+        String digitsOnly = registrationNo.replaceAll("[^0-9]", "");
+        if (digitsOnly.length() != 8) {
+            return null;
+        }
+        return digitsOnly.substring(0, 4) + "-"
+                + digitsOnly.substring(4, 6) + "-"
+                + digitsOnly.substring(6, 8);
     }
 
     private String saveProfileImage(MultipartFile profileImage) throws IOException {

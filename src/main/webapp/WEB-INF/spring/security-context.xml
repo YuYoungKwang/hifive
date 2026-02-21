@@ -11,21 +11,29 @@
 
     <http auto-config="true" use-expressions="true">
         <intercept-url pattern="/resources/**" access="permitAll" />
+        <intercept-url pattern="/images/**" access="permitAll" />
         <intercept-url pattern="/css/**" access="permitAll" />
+        <intercept-url pattern="/js/**" access="permitAll" />
         <intercept-url pattern="/auth/login**" access="permitAll" />
         <intercept-url pattern="/auth/signup**" access="permitAll" />
         <intercept-url pattern="/auth/find-id**" access="permitAll" />
         <intercept-url pattern="/auth/find-password**" access="permitAll" />
+        <intercept-url pattern="/oauth2/**" access="permitAll" />
+        <intercept-url pattern="/login/oauth2/**" access="permitAll" />
         <intercept-url pattern="/error/**" access="permitAll" />
-        <intercept-url pattern="/**" access="isAuthenticated()" />
+        <intercept-url pattern="/**" access="permitAll" />
 
         <form-login
             login-page="/auth/login"
             login-processing-url="/auth/login"
             username-parameter="username"
             password-parameter="password"
-            default-target-url="/main"
+            default-target-url="/hashTrip"
             authentication-failure-url="/auth/login?error=true" />
+
+        <oauth2-login
+            authentication-success-handler-ref="loginSuccessHandler"
+            authentication-failure-handler-ref="oauth2LoginFailureHandler" />
 
         <logout
             logout-url="/auth/logout"

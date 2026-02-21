@@ -10,11 +10,20 @@
 	</settings>
 
 	<typeAliases>
-		<typeAlias type="com.app.dto.UserDTO" alias="UserDTO" />
+		<typeAlias type="com.app.dto.UsersDTO" alias="UsersDTO" />
+		<typeAlias type="com.app.dto.UserTagMapDTO" alias="UserTagMapDTO" />
+		<typeAlias type="com.app.dto.TagMasterDTO" alias="TagMasterDTO" />
+
+		<typeAlias type="com.app.dto.PlaceDTO" alias="PlaceDTO" />
+		<typeAlias type="com.app.dto.PlaceHoursDTO" alias="PlaceHoursDTO" />
+		<typeAlias type="com.app.dto.PlaceReviewDTO" alias="PlaceReviewDTO" />
+		<typeAlias type="com.app.dto.PlaceTagMapDTO" alias="PlaceTagMapDTO" />
+		<typeAlias type="com.app.dto.WishListDTO" alias="WishListDTO" />
+		<typeAlias type="com.app.dto.CategoryDTO" alias="CategoryDTO" />
+
 		<typeAlias type="com.app.dto.TravelPlanDTO" alias="TravelPlanDTO" />
 		<typeAlias type="com.app.dto.PlanDetailDTO" alias="PlanDetailDTO" />
 		<typeAlias type="com.app.dto.CommunityDTO" alias="CommunityDTO" />
-		<typeAlias type="com.app.dto.PlaceDTO" alias="placeDTO"/>
 	</typeAliases>
 
 

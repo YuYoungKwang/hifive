@@ -14,16 +14,19 @@
 	</select>
 
 	<select id="getCommunityReviewsByPlanNo" parameterType="long"
-		resultType="com.app.dto.CommunityDTO">
+		resultType="CommunityDTO">
 		SELECT
 			c.review_no,
 			c.plan_no,
+			tp.plan_title,
 			c.user_no,
 			c.review_content,
 			c.review_rating AS rating,
 			NVL(u.user_nickname, u.user_name) AS created_by,
-			CAST(NULL AS TIMESTAMP) AS created_at
+			c.created_at AS created_at
 		FROM Community c
+		LEFT JOIN Travel_Plans tp
+			ON tp.plan_no = c.plan_no
 		LEFT JOIN Users u
 			ON u.user_no = c.user_no
 		WHERE c.plan_no = #{planNo}
@@ -31,11 +34,70 @@
 		ORDER BY c.review_no DESC
 	</select>
 
-	<insert id="insertCommunityReview" parameterType="com.app.dto.CommunityDTO">
+	<select id="countCommunityReviewsByAuthId" parameterType="string" resultType="int">
+		SELECT COUNT(1)
+		FROM Community c
+		JOIN USER_AUTHENTICATION ua
+			ON ua.USER_NO = c.USER_NO
+		WHERE ua.USER_AUTH_ID = #{value}
+		  AND c.REVIEW_CONTENT IS NOT NULL
+	</select>
+
+	<select id="getCommunityReviewsByAuthIdPaged" parameterType="map" resultType="CommunityDTO">
+		SELECT
+			r.review_no,
+			r.plan_no,
+			r.plan_title,
+			r.user_no,
+			r.review_content,
+			r.rating,
+			r.created_by,
+			r.created_at
+		FROM (
+			SELECT
+				c.review_no,
+				c.plan_no,
+				tp.plan_title,
+				c.user_no,
+				c.review_content,
+				c.review_rating AS rating,
+				NVL(u.user_nickname, u.user_name) AS created_by,
+				c.created_at,
+				ROW_NUMBER() OVER (
+					<choose>
+						<when test="sortType == 'oldest'">
+							ORDER BY c.created_at ASC, c.review_no ASC
+						</when>
+						<when test="sortType == 'rating'">
+							ORDER BY NVL(c.review_rating, 0) DESC, c.created_at DESC, c.review_no DESC
+						</when>
+						<otherwise>
+							ORDER BY c.created_at DESC, c.review_no DESC
+						</otherwise>
+					</choose>
+				) AS rn
+			FROM Community c
+			JOIN USER_AUTHENTICATION ua
+				ON ua.USER_NO = c.USER_NO
+			LEFT JOIN Travel_Plans tp
+				ON tp.plan_no = c.plan_no
+			LEFT JOIN Users u
+				ON u.user_no = c.user_no
+			WHERE ua.USER_AUTH_ID = #{authId}
+			  AND c.review_content IS NOT NULL
+		) r
+		WHERE r.rn BETWEEN #{startRow} AND #{endRow}
+		ORDER BY r.rn
+	</select>
+
+	<insert id="insertCommunityReview" parameterType="CommunityDTO">
+		<selectKey keyProperty="reviewNo" resultType="long" order="BEFORE">
+			SELECT SEQ_COMMUNITY_REVIEW_NO.NEXTVAL FROM dual
+		</selectKey>
 		INSERT INTO Community (
-			review_no, plan_no, user_no, review_content, review_rating
+			review_no, plan_no, user_no, review_content, review_rating, created_at
 		) VALUES (
-			#{reviewNo}, #{planNo}, #{userNo}, #{reviewContent}, #{rating,jdbcType=NUMERIC}
+			#{reviewNo}, #{planNo}, #{userNo}, #{reviewContent}, #{rating,jdbcType=NUMERIC}, SYSDATE
 		)
 	</insert>
 

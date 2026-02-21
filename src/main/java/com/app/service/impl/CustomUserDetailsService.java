@@ -8,8 +8,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.app.dao.auth.AuthDAO;
-import com.app.dto.UserDTO;
+import com.app.dao.AuthDAO;
+import com.app.dto.UsersDTO;
 
 @Service("customUserDetailsService")
 public class CustomUserDetailsService implements UserDetailsService {
@@ -25,7 +25,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserDTO user = authDAO.findByAuthId(username);
+        UsersDTO user = authDAO.findByAuthId(username);
         if (user == null) {
             throw new UsernameNotFoundException("존재하지 않는 아이디입니다.");
         }

@@ -1,10 +1,11 @@
 package com.app.dao.impl;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Repository;
 
 import com.app.dao.CommunityDAO;
@@ -13,44 +14,37 @@ import com.app.dto.CommunityDTO;
 @Repository
 public class CommunityDAOImpl implements CommunityDAO {
 
+    private static final String GET_COMMUNITY_REVIEWS_BY_PLAN_NO_STATEMENT_ID = "community_mapper.getCommunityReviewsByPlanNo";
+    private static final String INSERT_COMMUNITY_REVIEW_STATEMENT_ID = "community_mapper.insertCommunityReview";
+    private static final String COUNT_COMMUNITY_REVIEWS_BY_AUTH_ID_STATEMENT_ID = "community_mapper.countCommunityReviewsByAuthId";
+    private static final String GET_COMMUNITY_REVIEWS_BY_AUTH_ID_PAGED_STATEMENT_ID = "community_mapper.getCommunityReviewsByAuthIdPaged";
+
     @Autowired
     private SqlSessionTemplate sqlSessionTemplate;
 
     @Override
     public List<CommunityDTO> getCommunityReviewsByPlanNo(Long planNo) {
-        return sqlSessionTemplate.selectList("community_mapper.getCommunityReviewsByPlanNo", planNo);
+        return sqlSessionTemplate.selectList(GET_COMMUNITY_REVIEWS_BY_PLAN_NO_STATEMENT_ID, planNo);
     }
 
     @Override
     public int insertCommunityReview(CommunityDTO review) {
-        if (review.getReviewNo() == null) {
-            review.setReviewNo(nextCommunityReviewNo());
-        }
-        return sqlSessionTemplate.insert("community_mapper.insertCommunityReview", review);
+        return sqlSessionTemplate.insert(INSERT_COMMUNITY_REVIEW_STATEMENT_ID, review);
     }
 
-    private Long nextCommunityReviewNo() {
-        Long seqValue = selectNextSequenceOrNull("community_mapper.nextCommunityReviewNo");
-        Long tableBasedValue = sqlSessionTemplate.selectOne("community_mapper.nextCommunityReviewNoByTable");
-
-        if (seqValue == null) {
-            return tableBasedValue;
-        }
-        if (tableBasedValue == null) {
-            return seqValue;
-        }
-        return Math.max(seqValue, tableBasedValue);
+    @Override
+    public int countCommunityReviewsByAuthId(String authId) {
+        Integer count = sqlSessionTemplate.selectOne(COUNT_COMMUNITY_REVIEWS_BY_AUTH_ID_STATEMENT_ID, authId);
+        return count == null ? 0 : count;
     }
 
-    private Long selectNextSequenceOrNull(String statementId) {
-        try {
-            return sqlSessionTemplate.selectOne(statementId);
-        } catch (DataAccessException e) {
-            String message = e.getMessage();
-            if (message != null && message.contains("ORA-02289")) {
-                return null;
-            }
-            throw e;
-        }
+    @Override
+    public List<CommunityDTO> getCommunityReviewsByAuthIdPaged(String authId, int startRow, int endRow, String sortType) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("authId", authId);
+        params.put("startRow", startRow);
+        params.put("endRow", endRow);
+        params.put("sortType", sortType);
+        return sqlSessionTemplate.selectList(GET_COMMUNITY_REVIEWS_BY_AUTH_ID_PAGED_STATEMENT_ID, params);
     }
 }

@@ -4,13 +4,16 @@
 
 body {
     margin: 0;
-    min-height: 100vh;
     font-family: "Pretendard", sans-serif;
     background-color: #f4f6f9;
+}
+
+.auth-page {
+    min-height: calc(100vh - 140px);
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 24px 12px;
+    padding: 24px 12px 48px;
 }
 
 .auth-container {
@@ -107,6 +110,71 @@ body {
 
 .auth-links a:hover {
     text-decoration: underline;
+}
+
+.social-login {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.social-btn {
+    display: block;
+    padding: 0;
+    border-radius: 10px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.social-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.social-content {
+    width: 100%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 11px 14px;
+}
+
+.social-icon {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+}
+
+.social-text {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.social-btn.google {
+    color: #1f1f1f;
+    border-color: #dadce0;
+    background: #fff;
+    font-family: "Roboto", "Noto Sans KR", sans-serif;
+}
+
+.social-btn.kakao {
+    color: #191600;
+    background: #fee500;
+    border-color: #f2d800;
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+.social-btn.naver {
+    color: #fff;
+    background: #03c75a;
+    border-color: #02b350;
+    font-family: "NanumSquare", "Nanum Gothic", "Malgun Gothic", sans-serif;
 }
 
 .auth-message {

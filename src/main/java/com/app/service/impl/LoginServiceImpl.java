@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import com.app.dao.auth.AuthDAO;
-import com.app.dto.UserDTO;
+import com.app.dao.AuthDAO;
+import com.app.dto.UsersDTO;
 import com.app.service.LoginService;
 
 @Service
@@ -32,7 +32,7 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public UserDTO register(String userId,
+    public UsersDTO register(String userId,
                             String email,
                             String rawPassword,
                             String userName,
@@ -72,7 +72,7 @@ public class LoginServiceImpl implements LoginService {
         Long userNo = authDAO.nextUserNo();
         Long userAuthNo = authDAO.nextUserAuthNo();
 
-        UserDTO newUser = new UserDTO();
+        UsersDTO newUser = new UsersDTO();
         newUser.setUserNo(userNo);
         newUser.setUserType(DEFAULT_USER_TYPE);
         newUser.setUserStatus(ACTIVE_STATUS);
@@ -124,7 +124,7 @@ public class LoginServiceImpl implements LoginService {
 
         String normalizedUserId = userId.trim();
         String normalizedEmail = email.trim().toLowerCase();
-        UserDTO matchedUser = authDAO.findByAuthId(normalizedUserId);
+        UsersDTO matchedUser = authDAO.findByAuthId(normalizedUserId);
 
         if (matchedUser == null || !ACTIVE_STATUS.equalsIgnoreCase(matchedUser.getUserStatus())) {
             return null;
@@ -145,11 +145,65 @@ public class LoginServiceImpl implements LoginService {
     }
 
     @Override
-    public UserDTO findByAuthId(String userId) {
+    public UsersDTO findByAuthId(String userId) {
         if (!StringUtils.hasText(userId)) {
             return null;
         }
         return authDAO.findByAuthId(userId.trim());
+    }
+
+    @Override
+    public boolean isSocialUserMissingAdditionalInfo(String userId) {
+        UsersDTO user = findByAuthId(userId);
+        if (user == null) {
+            return false;
+        }
+        if (!ACTIVE_STATUS.equalsIgnoreCase(user.getUserStatus())) {
+            return false;
+        }
+
+        String snsType = user.getAuthSnsType();
+        boolean isSocial = StringUtils.hasText(snsType) && !DEFAULT_SNS_TYPE.equalsIgnoreCase(snsType.trim());
+        if (!isSocial) {
+            return false;
+        }
+
+        return !StringUtils.hasText(user.getUserPhoneNumber())
+                || !StringUtils.hasText(user.getUserRegistrationNo());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSocialAdditionalInfo(String userId, String userPhoneNumber, String userRegistrationNo) {
+        if (!StringUtils.hasText(userId)
+                || !StringUtils.hasText(userPhoneNumber)
+                || !StringUtils.hasText(userRegistrationNo)) {
+            throw new IllegalArgumentException("연락처와 생년월일은 필수 입력입니다.");
+        }
+
+        UsersDTO user = findByAuthId(userId.trim());
+        if (user == null) {
+            throw new IllegalArgumentException("사용자 정보를 찾을 수 없습니다.");
+        }
+        if (!ACTIVE_STATUS.equalsIgnoreCase(user.getUserStatus())) {
+            throw new IllegalArgumentException("비활성 계정은 수정할 수 없습니다.");
+        }
+
+        String snsType = user.getAuthSnsType();
+        boolean isSocial = StringUtils.hasText(snsType) && !DEFAULT_SNS_TYPE.equalsIgnoreCase(snsType.trim());
+        if (!isSocial) {
+            throw new IllegalArgumentException("소셜 로그인 계정만 추가 정보를 입력할 수 있습니다.");
+        }
+
+        String normalizedPhone = userPhoneNumber.trim();
+        String normalizedRegistrationNo = userRegistrationNo.trim();
+        int updatedRows = authDAO.updateSocialAdditionalInfoByAuthId(
+                user.getAuthId(),
+                normalizedPhone,
+                normalizedRegistrationNo);
+        if (updatedRows != 1) {
+            throw new IllegalStateException("추가 정보 저장에 실패했습니다.");
+        }
     }
 
     private String generateTemporaryPassword(int length) {
@@ -176,7 +230,7 @@ public class LoginServiceImpl implements LoginService {
         return value;
     }
 
-    private boolean hasAnyAddress(UserDTO user) {
+    private boolean hasAnyAddress(UsersDTO user) {
         return StringUtils.hasText(user.getUserZipCode())
                 || StringUtils.hasText(user.getUserBaseAddress())
                 || StringUtils.hasText(user.getUserDetailAddress());
